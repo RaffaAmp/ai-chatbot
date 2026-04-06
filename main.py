@@ -3,18 +3,17 @@ import requests
 import datetime
 import textwrap
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Literal
 
-from lindenberg_data import pdf_documents  # uses the file we created/copied
+from lindenberg_data import pdf_documents
 
 # ---- CONFIG ----
 MODEL = "swiss-ai/apertus-8b-instruct"
 HISTORY_LENGTH = 5
 CONTEXT_LEN = 3
 
-# IMPORTANT: use an environment variable in production
-# For now, we'll just read from env; we'll set it later on the host.
 import os
 
 APERTUS_KEY = os.environ.get("APERTUS_KEY")
@@ -24,7 +23,6 @@ if not APERTUS_KEY:
 INSTRUCTIONS = "Du bist ein neutraler Informationsassistent fuer das Windpark Lindenberg Projekt. Antworte kurz, sachlich und nur auf Basis der vorhandenen Dokumente. Wenn keine Informationen vorhanden sind, sage dies deutlich."
 
 # ---- DATA MODELS ----
-
 Role = Literal["user", "assistant"]
 
 class Message(BaseModel):
@@ -34,9 +32,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message]
 
-
-# ---- HELPER FUNCTIONS (adapted from your Streamlit app) ----
-
+# ---- HELPER FUNCTIONS ----
 def improved_search(query, documents, max_results=3):
     """Simple search scoring similar to your Streamlit version."""
     if not documents:
@@ -121,10 +117,17 @@ def call_apertus(prompt: str) -> str:
 
     return result["choices"][0]["message"]["content"]
 
-
 # ---- FASTAPI APP ----
-
 app = FastAPI()
+
+# ADD CORS MIDDLEWARE
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
